@@ -1,0 +1,114 @@
+---
+title: "When Essential Elements become Less Essential in EU Trade"
+author: "June Jung"
+date: "5/5/2020"
+output: pdf_document
+---
+
+The European Union (EU) has actively been incorporating normative values in its trade relations with third countries for the past few decades—attaching “Essential Elements” as human rights clauses in bilateral treaties became an obligation by EU law since the Lisbon Treaty came into force.  However, European legal scholars identify that this clause has not been applied or enforced in a coherent manner. In fact, the clauses vary across countries, stringent conditionalities were attached on countries with already established human rights standards, and yet sometimes soft clause on states with low human rights practices. The Essential Elements have also not been activated to withdraw or suspend trade preferences by far, even in times of grave human rights violations. In this study, I attempt to answer the question, “Why is the EU inconsistent in linking human rights to bilateral trade?”. The EU has indeed been criticized for taking weaker measures on larger economic powers and countries that it is more resource-dependent on, such as Russia leveraging gas resources as political weapons on the EU to deflect accusations of human rights violations.  
+Positing that the EU will easily compromise human rights elements when economic stakes are high, this study measures how the scope, strength, and enforcement of human rights clauses in trade is associated with extra-EU export and import, especially energy imports given the EU’s high energy dependence. The linkage between trade and human rights is measured in three dimensions, in terms of strength, scope and enforcement. Strength and scope is coded from 0 to 3, and enforcement from 0 to 2. The strength and scope variable is added as linkage scores of the clause, and regarded as continuous variables, while the enforcement variable is ordered/categorical. 0 is when there is a violation identified in the country through European Parliament Resolutions, but the EU does not enforce the human rights clause, 1 is default value when there is no violation and no enforcement. 2 is when there is enforcement in times of violation. To estimate the linkage strength of clause, I use the OLS model, and Ordered Logit model to estimate enforcement. 
+
+The control variables included in the OLS model are: level of human rights practice, economic integration, whether the country is a signatory state of the European Council of Human Rights(ECHR), whether the country is a GSP/GSP+ beneficiary, and the year in which the trade negotiation was concluded. I use the Freedom House index as an indicator for measuring the levelof human rights practices in each country, a widely used index to measure civil and political rights— 1 represents most free, and 7 as the least, therefore higher numbers represent worse human rights practices.6 The average “freedom rating scores” from the year 2009 to 2018 will be used. For each year I have added the civil rights score and the political rights score, hence the range of values is from 2 to 14. Using these freedom rating scores as a control variable allows to observe whether the linkages are indeed implemented to improve human rights situations in counties with low freedom scores, or rather used as a tactical tool that can be compromised by economic interests.
+The economic integration variables are agreement types coded as 1) Customs Unions, 2) Free Trade Agreements, and 3) Partnership and Cooperation Agreements. This serves as a control variable to show the highest (1) to lowest (3) economic integration.
+
+For the clause linkage, there are three OLS models that can be derived, with independent variables being: energy import share, import share, and export share.
+
+1. Basic Descriptive Statistics
+This shows the basic statistics of each variable that I will estimate. 
+```{r}
+library("here")
+library("ggplot2")
+library("tidyverse")
+library(broom)
+d <- read.csv("mydata2.csv")
+data<-d[c("strength","scope","enforcement","total2" ,"echr","gsp","agreement_type","farris","freedom", "import_share","after_lisbon","import_enshare","export_share")]
+library(Hmisc)
+Hmisc::describe(data) #DV/ total2 is the added value of scope and enforcement, which is clause linkage score
+```
+
+2. Basic Operations
+First I need the Cronbach alpha of the two variables: strength and scope. The Cronbach alpha is 0.70, which makes sense to add the two variables. 
+```{r}
+library("psy")
+linkage_score<-subset(data,select=c("strength","scope"), na.rm=T)
+cronbach(linkage_score)
+```
+
+3. Clause Linkage: Strength and Scope
+```{r}
+#Main Variable of Interest: energy import shares, import shares, export shares
+lm1<-lm(total2~import_enshare+freedom+agreement_type+gsp+echr+after_lisbon,data=data)
+lm2<-lm(total2~import_share+freedom+agreement_type+gsp+echr+after_lisbon,data=data)
+lm3<-lm(total2~export_share+freedom+agreement_type+gsp+echr+after_lisbon,data=data)
+tidy(lm1)
+tidy(lm2)
+tidy(lm3)
+
+library(sjPlot)
+plot_model(lm1)
+plot_model(lm2)
+plot_model(lm3)
+```
+With the significance level set at 0.05, all ot the variable of interests are statistically significant. All of them have a negative association with the linkage, which are import share, export share, and energy import share(average 2009-2018). Most notably, export share influences linkages the most, where the linkage score drops by -0.38 with a unit increase. This could mean that if the EU imports or exports more on the country, it will apply a weaker linkage clause in trade. All other variables are statistically significant except for the freedom variable, which is an indicator of actual human rights practices in the country.
+
+4. Checking Models
+`
+#Residual Plot
+data$resid1<-resid(lm1)
+plot(data$import_enshare,data$resid1)
+
+data$resid2<-resid(lm2)
+plot(data$import_share,data$resid2)
+data$resid3<-resid(lm3)
+plot(data$export_share,data$resid3)
+
+#Robustness check
+library(estimatr)
+robust_model1 <- lm_robust( total2
+                          ~import_enshare+freedom+agreement_type+gsp+echr+after_lisbon, data = data)
+summary(robust_model1)
+tidy(robust_model1)
+
+robust_model2 <- lm_robust( total2
+                          ~import_share+freedom+agreement_type+gsp+echr+after_lisbon, data = data)
+summary(robust_model3)
+tidy(robust_model3)
+
+robust_model3 <- lm_robust( total2
+                          ~export_share+freedom+agreement_type+gsp+echr+after_lisbon, data = data)
+summary(robust_model3)
+tidy(robust_model3)
+
+
+
+5. Measuring Enforcement
+```{r}
+#OLS
+lm4<-lm(enforcement~import_enshare+freedom+agreement_type+gsp+echr+after_lisbon,data=data)
+tidy(lm4)
+lm5<-lm(enforcement~import_share+freedom+agreement_type+gsp+echr+after_lisbon,data=data)
+tidy(lm5)
+lm6<-lm(enforcement~export_share+freedom+agreement_type+gsp+echr+after_lisbon,data=data)
+tidy(lm6)
+
+library("dplyr")
+library(MASS)
+pol1<-polr(as.factor(enforcement)~import_enshare+echr+gsp+agreement_type+freedom,data=data, Hess=T, method=c("logistic"))
+summary(pol1)
+ctable1 <- coef(summary(pol1))
+ctable1
+
+pol2<-polr(as.factor(enforcement)~import_share+echr+gsp+agreement_type+freedom,data=data, Hess=T, method=c("logistic"))
+summary(pol2)
+ctable2 <- coef(summary(pol2))
+ctable2
+
+pol3<-polr(as.factor(enforcement)~export_share+echr+gsp+agreement_type+freedom,data=data, Hess=T, method=c("logistic"))
+summary(pol3)
+ctable3 <- coef(summary(pol3))
+ctable3
+```
+First, I applied an OLS model on the enforcement variable. The regression results in table 4 show how only the coefficients for the freedom scores are statistically significant at a 0.05 level, yet they remained very small. Compared to how the agreement was signed, this outcome indicates that enforcement had little to do with economic interests or whether the country was a GSP beneficiary or an ECHR signatory. It is also important to note that the freedom scores have a negative association with the dependent variable, whereas coefficients in the previous models above were positive. This outcome, however, is difficult to interpret as there were less than 10 cases where the human rights clauses were actually activated against the identified violators, yet EP resolutions were issued on 36 countries between 2009 to 2018. This means that most of the least-free states that the EP issued a resolution on were coded as 0 and few as 2. Considering the small number of outcome categories and the skewed distribution, I also applied the OLOGIT on the enforcement variable as an alternative method of analysis. In table 4, while the coefficients for independent variables signify consistent outcomes with the OLS models, the cutoff points show how the 1 and 2 are hardly differentiated to measure the actual activation of human rights clauses. These results likely show that in terms of enforcement, in most cases the EU chose not to take action even when human rights violations were identified, and this behavior was not associated with economic interests. The regression outcome depicts the EU’s general reluctance in enforcing human rights clauses in bilateral trade agreements, even when grave human rights violations were detected. 
+
+6. Conclusion and Discussion
+This study’s main contribution is in its first-time attempt to empirically test the “inconsistency” in the EU’s human rights-trade nexus that European legal scholars have identified, and in that it seeks to explain the reason behind this behavior. The inclusion and observation of “enforcement” as a dependent variable is also a novel approach in understanding issue linkage mechanisms. While many factors such as institutional politics and member state interests may drive trade negotiations, it is evident that economic trade interests are influential factors in bilateral trade agreements. Statistical models show that in terms of the trade agreements themselves, the clauses were inconsistent, in that the EU’s application of human rights clauses were unrelated to actual human rights practices of the country, but was willing to make concessions when it was exporting or importing more from the country. This was also true for energy imports, supporting my resource-dependence hypotheses and previous literature. These outcomes suggest that these “essential elements” may not be as “essential” to trade agreements as the EU claims. However, when it comes to the enforcement of human rights clauses, economic interests did not play a role, but the OLOGIT outcome shows how hesitant the EU is in the actual activation of essential elements in trade to begin with. 
